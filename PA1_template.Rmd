@@ -1,25 +1,198 @@
 ---
-title: "Reproducible Research: Peer Assessment 1"
-output: 
-  html_document:
-    keep_md: true
+title: "PA1_template"
+author: "CJ"
+date: "April 20, 2016"
+output: html_document
 ---
 
+this is an attempt at using R markdown and knitr to produce an easy to read document containing R code and R output.  This is for the Coursera class: Reproducible Research
 
-## Loading and preprocessing the data
+# Reproducible Research: Assignment 1
+## Loading and Prep of the data
+
+Loading the Data
+```{r}
+activitydata <- read.csv("activity.csv")
+```
+
+Converting the date column to a date
+
+```{r}
+
+activitydata$date <- as.Date(activitydata$date)
+
+```
+
+## What is the mean total number of steps taken per day?
+
+get total steps per day
+
+```{r}
+stepsperday <- tapply(activitydata$steps, activitydata$date, sum)
+
+```
+
+build histogram
+
+```{r}
+hist(stepsperday, main = "Histogram of Steps Per Day", xlab = "steps taken per day", ylab = "freqency")
+
+```
+
+provide mean
+
+```{r}
+
+mean(stepsperday, na.rm = "TRUE")
+
+```
+
+provide median
+
+```{r}
+
+median(stepsperday, na.rm = "TRUE")
+
+```
+
+## What is the average daily activity pattern
+
+Make a timeseries plot of the average steps taken per interval
+
+```{r}
+
+intervalmean <- tapply(activitydata$steps, activitydata$interval, mean, na.rm = "TRUE")
+
+plot(row.names(intervalmean), intervalmean, type = "l", xlab = "Interval", ylab = "Average", main = "Average Number of Steps Taken per Interval")
+
+```
 
 
 
-## What is mean total number of steps taken per day?
+In which interval does the maximum occur?
+
+```{r}
+
+names(which.max(intervalmean))
+
+```
+
+
+## Imputing Missing Values
+
+Find the number of missing values in the dataset
+
+```{r}
+
+sum(is.na(activitydata))
+
+```
+
+
+Devise a strategy for filling in all of the missing values in the dataset
+
+Using the interval average to fill in gaps
+
+```{r}
+meansteps <- aggregate(steps ~ interval, data = activitydata, FUN = mean)
+NAFill <- numeric()
+for (i in 1:nrow(activitydata)) {
+  observation <- activitydata[i,]
+  if(is.na(observation$steps)){
+    steps <- subset(meansteps, interval == observation$interval)$steps
+  } else {
+    steps <- observation$steps
+  }
+  NAFill <- c(NAFill, steps)
+}
+
+```
+
+
+Create a new dataset that is equal to the original but with filled in missing data.
+
+
+```{r}
+
+new_data <- activitydata
+new_data$steps <- NAFill
+
+
+```
+
+Make a histogram of the total number of daily steps and report the mean and median total daily steps.
+
+```{r}
+
+stepsperdayFill <- tapply(new_data$steps, new_data$date, sum)
+
+```
+
+And the Histogram is:
+
+```{r}
+
+hist(stepsperdayFill, main = "Histogram of Steps Per Day With Filled Data", xlab = "steps taken per day", ylab = "freqency")
+
+
+```
 
 
 
-## What is the average daily activity pattern?
+Report on Mean of the new set
+
+
+```{r}
+
+mean(stepsperdayFill)
+
+```
 
 
 
-## Imputing missing values
+
+Report on Median of the new set
+
+```{r}
+
+median(stepsperdayFill)
+
+```
 
 
+Filling the NA values has had no impact on the daily average but a slight impact on the median.
 
-## Are there differences in activity patterns between weekdays and weekends?
+## Are there any differences in activity patterns between weekdays and weekends
+
+Create a new factor variable in the dataset with two levels "weekday"" and "weekend"
+
+```{r}
+
+day <- weekdays(activitydata$date)
+daylevel <- vector()
+for(i in 1:nrow(activitydata)){
+  if(day[i] == "Sunday"){
+    daylevel[i] <- "weekend"
+  } else if (day[i] == "Saturday"){
+    daylevel[i] <- "weekend"
+  } else{
+    daylevel[i] <- "weekday"
+  }
+}
+
+activitydata$daylevel <- daylevel
+activitydata$daylevel <- factor(activitydata$daylevel)
+
+stepsbyday <- aggregate(steps ~ interval + daylevel, data = activitydata, mean)
+names(stepsbyday) <- c("interval", "daylevel", "steps")
+
+```
+
+Make a panel plot comparing weekday activity against weekend activity.
+
+```{r}
+library(lattice)
+xyplot(steps ~ interval | daylevel, stepsbyday, type = "l", layout = c(1, 2), main = "Weekend vs Weekday Activity", xlab = "interval", ylab = "Steps")
+
+```
+
